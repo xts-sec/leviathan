@@ -1,12 +1,10 @@
 #!/usr/bin/python3
 
-# test
-
+import os
 import nmap
 import argparse
-import os
 from pprint import pprint
-import pandas as pd
+from leviathan_classes import *
 
 print("""
   _      ________      _______       _______ _    _          _   _ 
@@ -20,63 +18,100 @@ Made by xts-sec (https://github.com/xts-sec)
 """)
 
 parser = argparse.ArgumentParser(description='An offensive security tool which automates an engagement as far as possible, including scanning, enumeration, and exploitation.')
-
 parser.add_argument("target", type=str)
-
 args = parser.parse_args()
-
 nm = nmap.PortScanner()
+os.system("mkdir ./scans")
 
 def div():
     print("#" * 50)
 
 def quickScanTCP(target):
+    arguments = "-T4 -oN ./scans/quick"
     div()
-    nm.scan(target, arguments="")
-    for host in nm.all_hosts():
-        print('Host : %s (%s)' % (host, nm[host].hostname()))
-        print('State : %s' % nm[host].state())
+    print("Saving scan results to 'quick.nmap'")
+    nm.scan(target.ip, arguments=arguments)
+    parseScanData(target, nm, "tcp")
 
-    for proto in nm[host].all_protocols():
-        print('Protocol : %s' % proto)
-        lport = nm[host][proto].keys()
-        for port in lport:
-            print('port : %s' % (port))
+def fullScanTCP(target):
+    arguments = "-p- -T5 -oN ./scans/full"
     div()
+    print("Saving scan results to 'full.nmap'")
+    nm.scan(target.ip, arguments=arguments)
+    parseScanData(target, nm, "tcp")
 
-def serviceScanTCP(target):
+def shortServiceScanTCP(target):
+    arguments = "-T4 -sV -oN ./scans/service"
     div()
-    nm.scan(target, arguments="-sV")
-    for host in nm.all_hosts():
-        print('Host : %s (%s)' % (host, nm[host].hostname()))
-        print('State : %s' % nm[host].state())
+    nm.scan(target.ip, arguments=arguments)
+    parseScanData(target, nm, "tcp")
 
-    for proto in nm[host].all_protocols():
-        print('Protocol : %s' % proto)
-        lport = nm[host][proto].keys()
-        for port in lport:
-            print('port : %s\tService : %s\tVersion : %s' % (port, nm[host][proto][port]['name'], nm[host][proto][port]['product'] + " " + nm[host][proto][port]['version']))
+def fullServiceScanTCP(target):
+    arguments = "-T4 -p- -sV -oN ./scans/fullService"
     div()
+    print("Saving scan results to 'fullService.nmap'")
+    nm.scan(target.ip, arguments=arguments)
+    parseScanData(target, nm, "tcp")
+
+def quickScanUPD(target):
+    arguments = "-T4 -sU -oN ./scans/quickUDP"
+    div()
+    print("Saving scan results to 'quickUDP.nmap")
+    nm.scan(target.ip, arguments=arguments)
+    parseScanData(target, nm, "udp")
+
+def parseScanData(target, nm, protocol):
+    target.hostname = nm[target.ip].hostname()
+    target.state = nm[target.ip].state()
+    for rport in nm[target.ip][protocol].keys():
+        port = Port(rport, protocol,
+            nm[target.ip][protocol][rport]["name"],
+            nm[target.ip][protocol][rport]["product"], 
+            nm[target.ip][protocol][rport]["version"]
+            )
+        target.add_port(port)
+    
+    print(target)
+
+
 
 def menu():
     while True:
         print("MAIN MENU")
         print("Press 0 to exit")
-        print("Press 1 for quick tcp scan")
-        print("Press 2 for Service Scan")
+        print("Press 1 for Quick TCP Scan")
+        print("Press 2 for Full TCP Scan")
+        print("Press 3 for Short TCP Service Scan")
+        print("Press 4 for Full TCP Service Scan")
+        print("Press 5 for Quick UDP Scan (SUDO)")
 
         div()
 
         choice = input (">>> ")
 
         match choice:
+            case "clear":
+                os.system("clear")
             case "0":
                 break
             case "1":
-                quickScanTCP(args.target)
+                target = Host(args.target)
+                quickScanTCP(target)
             case "2":
-                serviceScanTCP(args.target)
+                target = Host(args.target)
+                fullScanTCP(target)
+            case "3":
+                target = Host(args.target)
+                shortServiceScanTCP(target)
+            case "4":
+                target = Host(args.target)
+                fullServiceScanTCP(target)
+            case "5":
+                target = Host(args.target)
+                quickScanUPD(target)
             case _:
                 pass
+
+
 
 menu()
